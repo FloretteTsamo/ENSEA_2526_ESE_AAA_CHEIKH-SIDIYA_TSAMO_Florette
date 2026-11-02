@@ -58,7 +58,7 @@ TIM1 est configuré en mode centré (center-aligned) pour générer les 2 couple
 | Prescaler | 0 | — |
 | Period (ARR) | 4249 | 170 MHz / (2 × 20 kHz) − 1 = 4249, soit une période de 50 µs |
 | Résolution | ≈ 4250 pas (~12 bits) | supérieure au minimum de 10 bits demandé |
-| Temps mort (DeadTime) | 34 (≈ 200 ns) | td(off) + tf de l'IRF540N ≈ 74 ns (datasheet, RG = 5,1 Ω) ; marge prise pour tenir compte de la résistance de grille réelle (30 Ω) et du temps de propagation du driver HCPL-315J — **valeur à faire valider par l'enseignant** |
+| Temps mort (DeadTime) | 34 (≈ 200 ns) | td(off) + tf de l'IRF540N ≈ 74 ns (datasheet, RG = 5,1 Ω) ; marge prise pour tenir compte de la résistance de grille réelle (30 Ω) et du temps de propagation du driver HCPL-315J  |
 
 Commande complémentaire décalée : le bras U reçoit le rapport cyclique de consigne, le bras V reçoit le complément (`ARR − CCR_U`), ce qui crée le déphasage entre les deux bras.
 
