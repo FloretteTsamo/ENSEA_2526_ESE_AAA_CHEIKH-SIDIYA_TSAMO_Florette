@@ -1,0 +1,5 @@
+../Core/Src/acquisition/input_analog.c:19:5:input_analog_init	8	static
+../Core/Src/acquisition/input_analog.c:33:5:input_analog_read_raw	24	static
+../Core/Src/acquisition/input_analog.c:59:7:input_analog_raw_to_voltage	16	static
+../Core/Src/acquisition/input_analog.c:65:7:input_analog_voltage_to_current	16	static
+../Core/Src/acquisition/input_analog.c:74:5:input_analog_shell_current	48	static

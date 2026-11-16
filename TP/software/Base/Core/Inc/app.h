@@ -9,13 +9,13 @@
 #define INC_APP_H_
 
 #include "stm32g4xx_hal.h"
+#include "main.h"
 #include "usart.h"
 
-void led_init();
+void led_init(void);
 
-
-void init_device();
-void loop();
+void init_device(void);
+void loop(void);
 
 uint8_t shell_uart2_transmit(const char *pData, uint16_t size);
 uint8_t shell_uart2_receive(char *pData, uint16_t size);

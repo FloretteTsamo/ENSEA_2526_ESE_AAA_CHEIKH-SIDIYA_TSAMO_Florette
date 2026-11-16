@@ -7,8 +7,6 @@
 
 #include "user_interface/shell.h"
 
-#include "motor_control/motor.h"
-
 
 h_shell_t hshell1;
 
@@ -107,11 +105,8 @@ void shell_init(h_shell_t* h_shell)
 
 	shell_add(h_shell, "help", sh_help, "Help");
 	shell_add(h_shell, "test", sh_test_list, "Test list");
-
-	shell_add(h_shell, "start", motor_start, "Start motor");
-	shell_add(h_shell, "stop", motor_stop, "Stop motor");
-	shell_add(h_shell, "speed", motor_speed, "Set motor speed");
-	shell_add(h_shell, "SET_CCR", motor_set_ccr, "Set CCR");
+	/* Les commandes de l'application (moteur, courant...) sont ajoutees
+	 * dans init_device() (app.c) : le shell reste independant du projet. */
 }
 
 

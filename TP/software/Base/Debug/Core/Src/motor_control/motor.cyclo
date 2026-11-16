@@ -1,0 +1,4 @@
+../Core/Src/motor_control/motor.c:9:5:motor_set_ccr	5
+../Core/Src/motor_control/motor.c:39:5:motor_start	1
+../Core/Src/motor_control/motor.c:62:5:motor_stop	1
+../Core/Src/motor_control/motor.c:79:5:motor_speed	5
