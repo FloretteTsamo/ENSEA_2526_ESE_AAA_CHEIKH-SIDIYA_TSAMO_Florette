@@ -7,6 +7,9 @@
 
 #include "user_interface/shell.h"
 
+#include "motor_control/motor.h"
+
+
 h_shell_t hshell1;
 
 /**
@@ -25,7 +28,7 @@ h_shell_t hshell1;
  */
 static int is_character_valid(char c)
 {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == ' ') || (c == '=');
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == ' ') || (c == '=') || (c == '_');
 }
 
 static int is_string_valid(char* str)
@@ -104,7 +107,13 @@ void shell_init(h_shell_t* h_shell)
 
 	shell_add(h_shell, "help", sh_help, "Help");
 	shell_add(h_shell, "test", sh_test_list, "Test list");
+
+	shell_add(h_shell, "start", motor_start, "Start motor");
+	shell_add(h_shell, "stop", motor_stop, "Stop motor");
+	shell_add(h_shell, "speed", motor_speed, "Set motor speed");
+	shell_add(h_shell, "SET_CCR", motor_set_ccr, "Set CCR");
 }
+
 
 /**
  * @brief Adds a shell command to the instance.

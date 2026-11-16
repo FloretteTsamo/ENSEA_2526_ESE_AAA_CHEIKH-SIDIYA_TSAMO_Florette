@@ -11,6 +11,9 @@
 #include "stm32g4xx_hal.h"
 #include "usart.h"
 
+void led_init();
+
+
 void init_device();
 void loop();
 
