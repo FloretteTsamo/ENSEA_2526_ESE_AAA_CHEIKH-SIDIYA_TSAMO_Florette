@@ -3,7 +3,7 @@
 ## Équipe
 
 - Florette Miroslava TSAMO
-- Abdellahi CHEIKH-SIDIYA
+- Abdellahi CHEIKH SIDIYA
 
 Encadrants : Alexis MARTIN, Nicolas PAPAZOGLOU
 
