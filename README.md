@@ -248,44 +248,46 @@ Le fonctionnement, dans `input_analog.c`, est le suivant :
 
 #### Validation à l'oscilloscope
 
-Pour valider la mesure, nous avons comparé, pour plusieurs consignes, le courant donné par une sonde de courant et la sortie du capteur. Voies analogiques : voie 1 (jaune) sonde de courant, 500 mA/div ; voie 2 (cyan) tension aux bornes du moteur, 50 V/div ; voie 3 (violet) sortie du capteur `U_Imes`, 500 mV/div. Voies numériques : signaux PWM. Base de temps : 20 µs/div.
+Pour valider la mesure, nous avons comparé le courant donné par une sonde de courant à l'oscilloscope avec la valeur renvoyée par la commande `CURRENT`.
 
-| Capture | Courant moyen (sonde) | Tension moyenne moteur | Sortie capteur | Courant déduit du capteur, (V − 1,65) / 0,05 |
-|---|---|---|---|---|
-| 15h25m21 | 1,36 A | 9,85 V | 1,70 V | 1,0 A |
-| 15h25m31 | 1,70 A | 9,79 V | 1,72 V | 1,4 A |
-| 15h27m47 | sonde saturée, < −1,96 A | −13,4 V | 1,56 V | −1,8 A |
-| 15h28m14 | −0,08 A | 0,82 V | 1,66 V | 0,2 A |
+Voies analogiques : voie 1 (jaune) sonde de courant, 500 mA/div ; voie 2 (cyan) tension aux bornes du moteur, 50 V/div ; voie 3 (violet) sortie du capteur `U_Imes`, 500 mV/div. Voies numériques : signaux PWM. Base de temps : 20 µs/div.
 
-Ces mesures nous ont montré que :
+Dans le tableau de mesures de l'oscilloscope, nous lisons la colonne « Valeur », qui donne la moyenne sur l'acquisition en cours. 
 
-- la sortie du capteur suit bien le courant : environ 1,56 V en marche arrière, 1,66 V près de l'arrêt, 1,70 à 1,72 V en marche avant, autour de 1,65 V à courant nul ;
-- l'écart entre la sonde et la valeur déduite du capteur reste de quelques centaines de mA. Il s'explique par l'offset réel du capteur et par la résolution de la voie 3 (moyenne affichée à 10 mV près, soit 0,2 A) ;
-- **la valeur affichée par la commande `CURRENT` correspond à celle mesurée par la sonde de courant de l'oscilloscope** : la chaîne de mesure est validée ;
-- le signe de la tension moyenne aux bornes du moteur suit le rapport cyclique : positive au-dessus de 50 %, négative en dessous, proche de 0 autour de 50 %.
+**Comparaison oscilloscope / shell.** En marche avant, la sonde de courant indique environ **1,4 A** à l'oscilloscope. En tapant la commande `CURRENT` dans le shell au même moment, nous retrouvons à peu près la même valeur :
 
 <table>
 <tr>
-<td align="center"><img src="img/7_2_courant_3_15h25m21.png" width="400"><br>15h25m21 : marche avant, 1,36 A</td>
-<td align="center"><img src="img/7_2_courant_4_15h25m31.png" width="400"><br>15h25m31 : marche avant, 1,70 A</td>
-</tr>
-<tr>
-<td align="center"><img src="img/7_2_courant_7_15h27m47.png" width="400"><br>15h27m47 : marche arrière (sonde saturée)</td>
-<td align="center"><img src="img/7_2_courant_8_15h28m14.png" width="400"><br>15h28m14 : près de 50 %, courant quasi nul</td>
-</tr>
-<tr>
-<td align="center"><img src="img/7_2_courant_2_15h25m02.png" width="400"><br>15h25m02 : établissement du courant</td>
-<td align="center"><img src="img/7_2_courant_5_15h25m43.png" width="400"><br>15h25m43 : marche avant, 1,69 A</td>
-</tr>
-<tr>
-<td align="center"><img src="img/7_2_courant_6_15h27m19.png" width="400"><br>15h27m19 : marche arrière</td>
-<td align="center"><img src="img/7_2_courant_9_15h28m17.png" width="400"><br>15h28m17 : faible rapport cyclique, 0,20 A</td>
+<td align="center"><img src="img/7_2_courant_3_15h25m21.png" width="420"><br>Oscilloscope : sonde de courant à environ 1,4 A</td>
+<td align="center"><img src="img/7_2_shell_current.png" width="420"><br>Shell : commande <code>CURRENT</code></td>
 </tr>
 </table>
 
+Nous avons ensuite relevé d'autres points de fonctionnement :
+
+| Point de fonctionnement | Tension moyenne moteur | Courant (sonde) | Sortie du capteur |
+|---|---|---|---|
+| Marche avant | 9,8 V | 1,4 A | 1,70 V |
+| Marche avant, rapport cyclique plus élevé | 18,7 V | 2,3 A | 1,73 V |
+| Marche arrière | −14,0 V | sonde saturée, au-delà de −1,85 A | 1,56 V |
+
+<table>
+<tr>
+<td align="center"><img src="img/7_2_courant_8_15h28m14.png" width="420"><br>Marche avant, rapport cyclique plus élevé : environ 2,3 A</td>
+<td align="center"><img src="img/7_2_courant_7_15h27m47.png" width="420"><br>Marche arrière : courant négatif (sonde saturée)</td>
+</tr>
+</table>
+
+Ces mesures nous ont montré que :
+
+- la valeur affichée par la commande `CURRENT` correspond à celle de la sonde de courant de l'oscilloscope : **la chaîne de mesure est validée** ;
+- la sortie du capteur passe au-dessus de 1,65 V en marche avant et en dessous en marche arrière, conformément à sa fonction de transfert ;
+- le signe de la tension moyenne aux bornes du moteur suit le rapport cyclique : positive au-dessus de 50 %, négative en dessous ;
+- le courant (voie 1) ondule en triangle à chaque commutation, ce qui confirme l'intérêt de mesurer au milieu de la phase de roue libre plutôt qu'à un instant quelconque.
+
 ### 7.3 — Mesure de la vitesse
 
-Nous avons écrit le code de la mesure de vitesse, mais **nous n'avons pas eu le temps de le tester sur le banc**.
+Nous avons écrit le code de la mesure de vitesse, mais **nous n'avons pas eu le temps de le tester , nous ne l'avons donc pas ajouter au dépot**.
 
 Le principe retenu : les voies A et B du codeur incrémental sont lues par TIM3 en mode codeur. Le compteur s'incrémente ou se décrémente à chaque front selon le sens de rotation, et nous obtenons la vitesse en relevant la variation du compteur sur une durée fixe :
 
