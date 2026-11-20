@@ -46,6 +46,17 @@ Nous avons commencé par étudier le schéma KiCad de la carte de puissance pour
 | Signal de synchronisation ADC (`ADC_SYNC`) | PC7 | GPIO |
 | Shell (terminal série) | PA2 / PA3 | USART2, 115200 bauds |
 
+### Banc de test
+
+<p align="center"><img src="img/schema_banc_de_test.png" width="850"></p>
+
+Le banc est organisé de la façon suivante :
+
+- **Commande** : depuis le PC, nous envoyons les commandes au shell avec Tera Term. Elles passent par le câble USB de la Nucleo (liaison série ST-Link, USART2 à 115200 bauds).
+- **Puissance** : la Nucleo envoie les 4 signaux PWM de TIM1 (PA8, PB13, PA9, PB14) à la carte de puissance. Les bras U et V de la carte, alimentés en 50 V, appliquent la tension aux bornes du moteur.
+- **Mesures** : la carte renvoie à l'ADC1 de la Nucleo les sorties des deux capteurs de courant, `U_Imes` (PA1) et `Bus_Imes` (PC2). Le codeur du moteur est relié à TIM3 ; cette partie n'a pas été testée.
+- **Oscilloscope** : nous l'utilisons pour vérifier chaque étape. Les voies numériques D0 à D3 observent les 4 PWM. La voie 1 est une pince de courant placée sur le fil du moteur, la voie 2 une sonde différentielle aux bornes du moteur, et la voie 3 observe la sortie du capteur `U_Imes`. La sonde différentielle est nécessaire car aucune des deux bornes du moteur n'est reliée à la masse.
+
 ## Organisation du code
 
 Nous avons conservé l'arborescence du projet fourni et réparti le code par fonction :
@@ -98,6 +109,19 @@ Comme le compteur est en mode centré, les impulsions des deux bras restent cent
 
 Elle est nulle à 50 %, positive au-dessus (marche avant) et négative en dessous (marche arrière).
 
+<p align="center"><img src="img/schema_pont_en_H.png" width="700"></p>
+
+Le moteur est branché entre les milieux des bras U et V, qui forment un pont en H. Sur chaque bras, les transistors haut et bas sont commandés par des signaux complémentaires (CHx et CHxN), séparés par le temps mort pour qu'ils ne conduisent jamais en même temps, ce qui court-circuiterait l'alimentation. Lorsque U_H et V_L conduisent, le moteur voit +Vbus. Lorsque les deux transistors hauts, ou les deux transistors bas, conduisent en même temps, il voit 0 V : c'est la phase de roue libre.
+
+<p align="center"><img src="img/schema_compteur_courant.png" width="700"></p>
+
+Ce schéma représente le compteur de TIM1 et l'allure du courant dans le moteur, pour un rapport cyclique supérieur à 50 %. Les signaux de commande eux-mêmes ne sont pas redessinés : ils ont été relevés à l'oscilloscope au paragraphe suivant.
+
+- Le compteur de TIM1 monte de 0 à ARR = 4249 puis redescend, en une période T = 50 µs (20 kHz).
+- Les deux seuils fixent les commandes : U_H est à l'état haut tant que le compteur est sous CCR1 = CCR, et V_H tant qu'il est sous CCR2 = ARR − CCR.
+- Le courant monte pendant les impulsions de tension (+Vbus aux bornes du moteur) et redescend pendant les phases de roue libre. Il ondule donc en triangle autour de sa valeur moyenne, deux fois par période PWM.
+- Au sommet du compteur, nous sommes au milieu d'une phase de roue libre : le courant y passe par sa valeur moyenne. C'est à cet instant que TIM1 déclenche l'ADC (TRGO), ce qui donne directement le courant moyen (voir 7.2).
+
 **Vérification à l'oscilloscope.** Nous avons relevé les 4 signaux sur les voies numériques de l'oscilloscope (CH1 = PA8, CH1N = PB13, CH2 = PA9, CH2N = PB14, 40 µs/div) pour plusieurs rapports cycliques :
 
 <table>
@@ -117,7 +141,11 @@ Ces mesures nous ont montré que :
 - sur chaque bras, les deux sorties sont complémentaires (CH1 / CH1N, CH2 / CH2N) ;
 - à **50 %**, CH1 et CH2 sont identiques : les deux bras ont le même rapport cyclique, la tension moyenne aux bornes du moteur est nulle ;
 - à **60 %** et **70 %**, CH1 est à l'état haut 60 % (respectivement 70 %) du temps, et CH2 seulement 40 % (respectivement 30 %). Les deux impulsions restent centrées sur le même instant, et CH2N correspond à CH1 décalé d'une demi-période (25 µs) : c'est bien la commande décalée attendue ;
-- le temps mort de 100 ns n'est pas visible à 40 µs/div ; il s'observe en zoomant sur un front, à environ 100 ns/div.
+- le temps mort de 100 ns n'est pas visible à 40 µs/div : nous l'avons mesuré séparément, en zoomant sur un front.
+
+**Mesure du temps mort.** À 40 ns/div, nous avons observé une sortie qui s'éteint (voie 2, cyan) et la sortie complémentaire du même bras qui s'allume (voie 1, jaune). Les curseurs, placés au début du front descendant et en haut du front montant, donnent **114,8 ns**. Ces deux points englobent une partie de la durée des fronts (une quinzaine de nanosecondes chacun) : le temps mort mesuré est donc proche des **100 ns** programmés. Pendant cet intervalle, les deux transistors du bras sont bloqués, ce qui évite tout court-circuit de l'alimentation.
+
+<p align="center"><img src="img/6_1_temps_mort_100ns.png" width="560"></p>
 
 ### 6.2 — Commande du rapport cyclique via UART
 
@@ -169,6 +197,14 @@ Nous avons ensuite branché le moteur et observé la tension à ses bornes (voie
 - **À 50 %**, les deux bras ont le même rapport cyclique : la tension moyenne aux bornes du moteur est nulle et le moteur reste à l'arrêt.
 - **Au-delà de 65 % environ**, la tension aux bornes du moteur présente deux impulsions par période PWM et sa valeur moyenne atteint 9,6 V : le moteur tourne.
 - **Passage brutal de 50 % à plus de 65 %.** À l'arrêt, le moteur ne présente que la résistance de son induit, sans force contre-électromotrice. Appliquer d'un coup une tension moyenne de près de 10 V provoque donc un fort appel de courant et un à-coup mécanique. Pour l'éviter, nous avons ajouté une commande qui fait varier le rapport cyclique progressivement (`speed`, voir 7.1).
+
+**Vérification de la formule.** Avec Vbus = 50 V, la tension moyenne aux bornes du moteur vaut `(2α − 1) × 50 V`. Les tensions moyennes mesurées à la sonde différentielle correspondent bien aux rapports cycliques appliqués :
+
+| Tension moyenne mesurée | α déduit de la formule |
+|---|---|
+| 9,8 V | 60 % |
+| 18,7 V | 69 %, soit la consigne `SET_CCR 2950` |
+| −14,0 V | 36 % (marche arrière) |
 
 ---
 
@@ -252,16 +288,27 @@ Pour valider la mesure, nous avons comparé le courant donné par une sonde de c
 
 Voies analogiques : voie 1 (jaune) sonde de courant, 500 mA/div ; voie 2 (cyan) tension aux bornes du moteur, 50 V/div ; voie 3 (violet) sortie du capteur `U_Imes`, 500 mV/div. Voies numériques : signaux PWM. Base de temps : 20 µs/div.
 
-Dans le tableau de mesures de l'oscilloscope, nous lisons la colonne « Valeur », qui donne la moyenne sur l'acquisition en cours. 
+Dans le tableau de mesures de l'oscilloscope, nous lisons la colonne « Valeur », qui donne la moyenne sur l'acquisition en cours. Les colonnes « Moyenne », « Min » et « Max » sont des statistiques cumulées depuis le début des mesures : elles mélangent plusieurs consignes et ne sont pas exploitables ici.
 
-**Comparaison oscilloscope / shell.** En marche avant, la sonde de courant indique environ **1,4 A** à l'oscilloscope. En tapant la commande `CURRENT` dans le shell au même moment, nous retrouvons à peu près la même valeur :
+**Comparaison oscilloscope / shell.** Nous avons comparé, autour de 60 %, ce que mesure l'oscilloscope avec ce que calcule la commande `CURRENT` :
 
 <table>
 <tr>
-<td align="center"><img src="img/7_2_courant_3_15h25m21.png" width="420"><br>Oscilloscope : sonde de courant à environ 1,4 A</td>
+<td align="center"><img src="img/7_2_courant_3_15h25m21.png" width="420"><br>Oscilloscope, α ≈ 60 % : sonde de courant 1,4 A, sortie du capteur 1,70 V</td>
 <td align="center"><img src="img/7_2_shell_current.png" width="420"><br>Shell : commande <code>CURRENT</code></td>
 </tr>
 </table>
+
+| | Oscilloscope (α ≈ 60 %) | Shell, `SET_CCR 2500` (α ≈ 59 %) | Shell, `SET_CCR 2100` (α ≈ 49 %) |
+|---|---|---|---|
+| Sortie du capteur | 1,70 V (voie 3) | 1681 et 1694 mV, calculés à partir de l'ADC | 1656 mV |
+| Courant | 1,4 A (pince de courant) | 636 et 894 mA | 120 mA |
+
+Cette comparaison nous a montré que :
+
+- **la tension calculée par le shell à partir de l'ADC (1,68 à 1,69 V) correspond à la sortie du capteur mesurée à l'oscilloscope (1,70 V)** : l'acquisition par l'ADC et la conversion en tension sont correctes ;
+- près de 50 %, le moteur est quasiment à l'arrêt et le shell affiche bien un courant proche de 0 (120 mA, soit 6 mV d'écart sur la sortie du capteur) ;
+- le courant affiché est du même ordre que celui de la pince, mais plus faible. Les deux relevés n'ont pas été faits exactement à la même consigne, et le calcul utilise les valeurs théoriques du capteur (1,65 V et 50 mV/A) sans étalonnage.
 
 Nous avons ensuite relevé d'autres points de fonctionnement :
 
@@ -280,14 +327,14 @@ Nous avons ensuite relevé d'autres points de fonctionnement :
 
 Ces mesures nous ont montré que :
 
-- la valeur affichée par la commande `CURRENT` correspond à celle de la sonde de courant de l'oscilloscope : **la chaîne de mesure est validée** ;
+- la chaîne de mesure fonctionne : la commande `CURRENT` suit les variations du courant observées à l'oscilloscope ;
 - la sortie du capteur passe au-dessus de 1,65 V en marche avant et en dessous en marche arrière, conformément à sa fonction de transfert ;
 - le signe de la tension moyenne aux bornes du moteur suit le rapport cyclique : positive au-dessus de 50 %, négative en dessous ;
 - le courant (voie 1) ondule en triangle à chaque commutation, ce qui confirme l'intérêt de mesurer au milieu de la phase de roue libre plutôt qu'à un instant quelconque.
 
 ### 7.3 — Mesure de la vitesse
 
-Nous avons écrit le code de la mesure de vitesse, mais **nous n'avons pas eu le temps de le tester , nous ne l'avons donc pas ajouter au dépot**.
+Nous avons écrit le code de la mesure de vitesse, mais **nous n'avons pas eu le temps de le tester donc n'avons pas ajouter au depot**.
 
 Le principe retenu : les voies A et B du codeur incrémental sont lues par TIM3 en mode codeur. Le compteur s'incrémente ou se décrémente à chaque front selon le sens de rotation, et nous obtenons la vitesse en relevant la variation du compteur sur une durée fixe :
 
@@ -325,7 +372,7 @@ Au terme des séances de TP, nous avons réalisé et validé :
 
 - la commande complémentaire décalée des 4 transistors à 20 kHz, avec temps mort, vérifiée à l'oscilloscope à 50 %, 60 % et 70 % ;
 - le pilotage du moteur depuis le shell (`start`, `stop`, `SET_CCR`, `speed`), avec rejet des valeurs hors limites ;
-- la mesure du courant moteur par la chaîne TIM1 → ADC1 → DMA synchronisée sur la PWM, dont les valeurs concordent avec la sonde de courant de l'oscilloscope.
+- la mesure du courant moteur, en polling puis par la chaîne TIM1 → ADC1 → DMA synchronisée sur la PWM, dont les tensions concordent avec celles relevées à l'oscilloscope.
 
 Il restait à faire :
 
